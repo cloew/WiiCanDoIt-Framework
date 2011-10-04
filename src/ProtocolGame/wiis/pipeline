@@ -1,0 +1,2 @@
+#!/bin/sh
+exec tee wiicontrol.log | ./wiis/wiimain | tee wiievent.log | ./wiis/gameevents |tee gameevent.log

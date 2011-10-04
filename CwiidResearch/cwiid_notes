@@ -1,0 +1,52 @@
+These are my random notes when fiddling with Cwiid (at this point ive taken out most random statements)
+
+DEPENDENCY: PYTHON-CWIID (need to test if this gets installed with wmgui)
+
+command "varName = cwiid.Wiimote()" automatically syncs a wiimote into the bluetooth stack
+command varName.state returns a set of what state various parts of the wiimote are in (led, rumble, battery, extension, error)
+command varname.led = n sets the led of the wiimote(1,2,3,4 act as a binary combination (so setting 8 would turn only 4 on, 3 would turn on one and 2)
+command varname.rumble = n sets rumble (0 for off, int for on)
+command get_acc_cal returns what looks like a calibration constant of the acceleration, pass (0) as perameter for the function call
+
+IR range of 1024x768 is mentioned in libcwiid/cwiid.h
+
+To set up multiple wiimotes: put one in discoverable,
+>>>varname1 = cwiid.Wiimote()
+put the second in discoverable
+>>>varname2 = cwiid.Wiimote()
+
+see wmdemo.py in the wmdemo directory for full functionality, provides a simple command prompt interface
+
+varname.enable(cwiid.FLAG_MESSAGE_IFC) enables message reporting
+varname.disable(cwiid.FLAG_MESSAGE_IFC) disables message reporting
+
+HOW TO SET UP BUTTON AND ACCELEROMETER REPORTING
+1. initialize a wiimote (call cwiid.Wiimote())
+2. set mesg_callback data member to name of callback function (callback function is called on event)
+3. enable message reporting (use varname.enable/disable as described above)
+4. use the xor orperator (^=) to set the rpt_mode data member with the following:
+	varname.rpt_mode = cwiid.RPT_ACC sets wiimote to report acceleration
+	varname.rpt_mode = cwiid.RPT_BTN sets wiimote to report buttons
+
+ACCELERATION DATA INPUT:
+callback function provides MESG_ACC in a message list space 0
+then mesg[1][cwiid.X] gives x accel
+	mesg[1][cwiid.Y] gives y accel,
+	mesg[1][cwiid.Z] gives y accel.
+
+BUTTON DATA INPUT:
+instead of listing change, in the mesg[1] section contains an integer, which, when putinto binary, is	
+	a list of what buttons are on (1 for on, 0 for off)
+
+button configurations (hexdecimal to binary conversion):
+BTN_2     0x0001
+BTN_1     0x0002
+BTN_B     0x0004
+BTN_A     0x0008
+BTN_MINUS 0x0010
+BTN_HOME  0x0080
+BTN_LEFT  0x0100
+BTN_RIGHT 0x0200
+BTN_DOWN  0x0400
+BTN_UP    0x0800
+BTN_PLUS  0x1000

@@ -1,0 +1,101 @@
+import pygame
+import sys
+import GUIObjects
+from pygame.locals import *
+
+SCREEN_SIZE = (1024, 768)
+
+HEADER = (9,34,106)
+TO_CHOOSE = (255,185,34)
+SELECTED = (28,154,178)
+BACKGROUND = (235,240,255)
+
+""" Builds a screen that prompts players to press Buttons 1 or 2       """
+"""  In order to collect Wiimote Ids and create Players for ecach team """
+class PlayerSelection:
+	def __init__(self, teamNames = None, header = None,):
+		# Create all necessary variables
+		self.headerFont = pygame.font.SysFont('Verdana', 40)
+		self.font = pygame.font.SysFont('Verdana', 30)
+		
+		self.surface = pygame.Surface(SCREEN_SIZE)
+		self.playerSelected = [False, False]
+		self.teamNames = teamNames
+		self.header = header
+		
+		self.running = 1
+		
+		# Build the Screen and add the sprites
+		self.buildScreen()
+		self.allsprites = pygame.sprite.LayeredUpdates( self.team1button, self.team2button )	  
+  
+	def buildScreen(self):
+		global BACKGROUND, HEADER, SELECTED, TO_CHOOSE
+		
+		# Build the text for the buttons
+		self.surface.fill(BACKGROUND)
+		# If given a header and team names
+		if self.header and self.teamNames: 
+			# Prompt for the header for each team
+			instructionString = self.header + ' please select your teams'
+			team1Prompt = "Red team press 1"
+			team2Prompt = "Blue team press 2"
+		# Otherwise
+		else:
+			# Prompt for team names
+			instructionString = "Please Pick Your Team Names"
+			team1Prompt = "Please pick your team name."
+			team2Prompt = team1Prompt
+
+		# Build the Instruction Prompt
+		instruction = self.headerFont.render(instructionString, True, HEADER)
+		instructionRect = instruction.get_rect()
+		instructionRect.centerx = self.surface.get_rect().centerx
+		instructionRect.centery = 200
+
+		# Build the Buttons to prompt each team
+		y = 500		
+		x = self.surface.get_rect().centerx - 250
+
+		self.team1button = GUIObjects.PlayerSelectButton( (x, y), team1Prompt, None, (255, 0, 0))		  
+		x = self.surface.get_rect().centerx + 250
+		self.team2button = GUIObjects.PlayerSelectButton( (x, y), team2Prompt, None, (0, 0, 255))
+		self.instruction = instruction
+		self.instructionRect = instructionRect
+		
+		self.surface.blit(self.instruction, self.instructionRect)
+
+	""" Check if Wii Input has been received yet """
+	def getInput(self, events):
+		# Allow keyboard input... will remove
+		for event in events: 
+			if event.type == KEYDOWN :
+				if event.key == K_a :
+					self.playerHasPicked(0)
+					self.team1button.highlight()
+				elif event.key == K_b :
+					self.playerHasPicked(1)
+					self.team2button.highlight()
+		
+		selecting = 1
+
+		# Checks if both players have selected
+		selecting = 0
+		for x in self.playerSelected:
+			if not x :
+				selecting = 1
+				break
+		
+		self.running = selecting
+		fakeEvent = pygame.event.Event(KEYDOWN, {'key': K_AT, 'type': KEYDOWN})
+		pygame.event.post(fakeEvent)
+		#self.drawScreen()
+
+	""" Sets that a player/team has selected their required option """
+	def playerHasPicked(self, player):
+		self.playerSelected[player] = True
+		# Highlights the appropriate teams button
+		if player == 0:
+			self.team1button.highlight()
+		elif player == 1:
+			self.team2button.highlight()

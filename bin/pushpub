@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Array called pubrepo
+# If you have more than one repository you want to push to, 
+# in a new file, you can add it in there and the script will push it.
+# This is suggested so that this one doesn't get committed with your changes,
+# and then have everyone who uses this script trying to push to your
+# repositories.
+#
+# syntax is sftp://site.domain/directory/repo \
+# for repository server machines that don't have bzr installed on it.
+# 
+pubrepo=( \
+	sftp://illuminate.mines.edu/~/public_html/wii2010-repo \
+	)
+
+# immediate exit on failure
+set -e
+
+#push!
+for u in ${pubrepo[@]} ; do
+	bzr push ${u}
+done

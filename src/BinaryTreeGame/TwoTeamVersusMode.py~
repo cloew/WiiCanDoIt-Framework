@@ -1,0 +1,191 @@
+from random import *
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from GameEventParser.GameEventCore import *
+from WiiEventParser.WEPControl import *
+
+from TeamClass import *
+from Bindings import *
+
+MAX_NUMBER = 25
+
+class TwoTeamVersusMode:
+    def __init__(self):
+        self.teams = ([])
+        self.playing = 1
+        self.order = ["Sorter", "Inserter", "Rotator"]
+        
+        self.playerOn = 0
+        self.selected = ([0, 0])
+        
+    def GameOver(self, team):
+        for x in self.teams :
+            if x is team :
+                print "Team", x.teamName, "WINS!!!"
+                self.playing = 0
+                
+        """ Do whatever is supposed to happen when a team wins """
+        # Probably prompt players to either play again or return to the main screen
+        # REMEMBER TO TURN OFF BINDINGS IF EXITING
+              
+    """ Generates a random Number that a Team hasn't used before """
+    """   (that's not in the queue or the root of the tree       """  
+    def getRandomNumber(self, team):
+        picked = False
+        while not picked :
+            picked = True
+            x = random()*MAX_NUMBER
+            x = int(x)
+            
+            if x == team.tree.root.value :
+                picked = False
+                continue
+            for val in team.queue :
+                if x == val :
+                    picked = False
+                    break
+            if picked:
+                return x
+        
+    """ Returns a player based on wiiID            """
+    """ Returns None if that player is not playing """
+    def findPlayer(self, wiiID):
+        for team in self.teams :
+            for player in team.playerList :
+                if player.wiiID == wiiID :
+                    return player
+        return None
+    
+    def startGame(self):
+        theWEP = WEPControl()
+        theWEP.addWiimotes(1)
+        self.getPlayers()
+        
+    def getPlayers(self):
+        """Get Team names """
+        #Some sort of dialog box that lets the players input their teamNames
+        # Then build both teams
+        
+        print "Please input the first Team's name."
+        input = raw_input()
+        teamA = Team(input)
+        self.teams.append(teamA)
+        
+        print "Please input the second Team's name."
+        input = raw_input()
+        teamB = Team(input)
+        self.teams.append(teamB)
+        
+        """ Set up Bindings for picking players """
+        bindings = PlayerSelectionBindings(GameMain.theGame, 6)
+        bindings.start() 
+        
+        """ While loop to wait for all players to be selected """
+        while self.playerOn < 3 :
+            selecting = 1
+            """ Prompt for self.order[playerOn] """
+            print "Sorter's Press You're buttons"
+            print teamA.teamName, ": Press A"
+            print teamB.teamName, ": Press B"
+            
+            while selecting :
+                """ Checks if both plpayers have selected """
+                for x in self.selected:
+                    if x == 0:
+                        selecting = 1
+                        break
+            
+            """ Get the next type of player """
+            self.playerOn += 1
+            
+        """Close the current bindings when done """
+        bindings.end()
+    
+    """ Adds a player to TeamA """
+    def addPlayerA(self, wiiInputs):
+        wiiID = wiiInputs['player']
+
+	theDict = {}        
+
+        theDict['wiiID'] = wiiID
+        theDict['team'] = self.teams[0]
+        theDict['oppTeam'] = self.teams[1]
+        
+        if self.playerOn == 0 :
+            player = Sorter(theDict)
+        elif self.playerOn == 1:
+            player = Inserter(theDict)
+        elif self.playerOn == 2:
+            player = Rotator(theDict)
+            
+        self.teams[0].addPlayer(player)
+        self.selected[0] = 1
+        
+        print teams[0].teamName, "has selected"
+    
+    """ Adds a Player to TeamB """
+    def addPlayerB(self):
+        wiiID = wiiInputs['player']
+
+	theDict = {}
+        
+        theDict['wiiID'] = wiiID
+        theDict['team'] = self.teams[1]
+        theDict['oppTeam'] = self.teams[0]
+        
+        if self.playerOn == 0 :
+            player = Sorter(theDict)
+        elif self.playerOn == 1:
+            player = Inserter(theDict)
+        elif self.playerOn == 2:
+            player = Rotator(theDict)
+            
+        self.teams[1].addPlayer(player)
+        self.selected[1] = 1
+        
+        print teams[1].teamName, "has selected"
+    
+    """ Tries to call a players shove function """
+    def tryShove(self, wiiInput):
+        wiiID = wiiInput
+        x = wiiInput['flickx']
+        y = wiiInput['flickz'] 
+        
+        player = self.findPlayer(wiiID)
+        
+        if player :
+            player.shove((x, y))
+    
+    """ Tries to call a player's rotate function """    
+    def tryRotate(self, wiiInput):
+        wiiID = wiiInput
+        roll = wiiInput['roll']
+        
+        player = self.findPlayer(wiiID)
+        
+        if player :
+            player.rotate(roll)
+    
+    """ Tries to call a player's select function """
+    def trySelect(self):
+        wiiID = wiiInput
+        
+        player = self.findPlayer(wiiID)
+        
+        if player :
+            player.select()
+    
+    """ Tries to call a player's deselect function """
+    def tryDeselect(self):
+        wiiID = wiiInput
+        
+        player = self.findPlayer(wiiID)
+        
+        if player :
+            player.deselect()
+    
+    def setInsertTimer(self):
+        """ might do stuff"""

@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import time 
+import cwiid
+
+from WiiEvent import WiiEvent
+import wiireader
+
+# set a filter for outbound events
+WiiEvent.EVENT_FILTER = {
+		'ButtonUpRelease':True, 
+		'ButtonDownRelease':True,
+		'ButtonLeftRelease':True,
+		'ButtonRightRelease':True,
+		'FlickX':True
+	}
+
+wiis = {}
+wnum = 0
+
+pid = os.getpid()
+
+foundevent = {'protocol':'Found'}
+while True :
+	l = sys.stdin.readline()
+	if not l : 
+		# eof
+		break
+	cmd = l.split()
+	if not cmd :
+		# empty line
+		continue
+	if cmd[0] == 'rediscover' :
+		# turn acc on for all entries for one second,
+		# this will generate "alive" events that will be detected by 
+		# our game parser
+		for v in wiis.itervalues() :
+			v.reportMode = 0
+			v.reportMode ^= cwiid.RPT_ACC
+		time.sleep(1)
+		# go back to button mode
+		for v in wiis.itervalues() :
+			v.reportMode = 0
+			v.reportMode ^= cwiid.RPT_BTN
+
+	elif cmd[0] == 'discover-one' :
+		try :
+			sys.stderr.write( "One discovery...\n" )
+			x = wiireader.WiimoteControl(cwiid.Wiimote(), '%d:%d'%(pid,wnum), (wnum+1)%8)
+			wiis[x.wid] = x
+			foundevent['wiimoteID'] = x.wid
+			wnum += 1
+			sys.stderr.write( "%d wiis so far...\n" % len(wiis) )
+			sys.stdout.write( '%s\n' % foundevent )
+			sys.stdout.flush()
+		except Exception, e:
+			sys.stderr.write( str(e) + '\n' )
+	elif cmd[0] == 'rumble-on' :
+		try :
+			wiis[cmd[1]].wiimote.rumble = 1
+		except Exception, e:
+			sys.stderr.write( str(e) + '\n' )
+	elif cmd[0] == 'rumble-off' :
+		try :
+			wiis[cmd[1]].wiimote.rumble = 0
+		except Exception, e:
+			sys.stderr.write( str(e) + '\n' )
+	elif cmd[0] == 'quit' :
+		# whatcha think?
+		break
+
+del wiis
+					

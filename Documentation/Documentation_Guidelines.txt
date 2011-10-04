@@ -1,0 +1,33 @@
+There was some confusion as I recall on how our code should be
+documented.  So, the purpose of this file is to clear that up,
+as best I can, from what Keith told me after our meeting with him 
+yesterday afternoon.
+
+Docstrings should be used at the top of every class and every function.
+They are there to explain what the class/function's purpose is, if it
+isn't obvious (in the case of C++, a function called get_object() should
+be pretty self-explanatory that it is a getter function for the object
+named object()).  They also describe what the inputs mean: i.e., 
+bgcolor in a few of the functions in WIIGUIToolkit (and I will change
+the docstrings of those functions to reflect this) expects to receive
+a capitalized string for the color.  The docstrings of your functions
+and your classes should provide a "how do I use this?" idea, and the 
+hash-marked one-line comments should provide implementation instructions
+for a programmer reading the code.
+
+You can test if your docstrings are working properly by importing
+the file into the python interpreter and running help(module), or
+help(module.function).  There is a way to do it with pydoc, but as of 
+right now, I don't know what that is, but as soon as I find that out
+I'll be updating this file with instructions on how to do so.
+
+There will be two phases of coding documentation.  The first is in our
+actual code... the docstrings and comments.  While pydoc CAN read 
+reStructuredText and format that text appropriately, we don't have to
+put rST in our code.  Our docstrings will be exported, and that will be
+one of our phases.  
+
+The second phase, which is the phase that gets marked up using rST,
+is writing up a document on how our games are "glued together."  
+How do the Binary Tree and Network Routing Games utilize the GEP and 
+WEP?  How are they structured, base framework to user interface?

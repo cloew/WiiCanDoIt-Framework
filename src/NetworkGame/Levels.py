@@ -1,0 +1,201 @@
+from Globals import COLORLIST
+import MapClass
+from RouterNodeClass import *
+
+""" Holds functions to build specific pre-determined Maps """
+
+""" Function that adds nodes to the given map """
+""" inMap: The Map object the RouterNodes will be added to """
+""" numNodes: The number of RouterNodes that will be added """
+""" coords: The dictionary of coordinates that specify where """ 
+""" each color of RouterNode should appear on the screen """
+def addNodes(inMap, numNodes, coords):
+	global COLORLIST	
+
+	x = 0
+	for x in range(numNodes) :
+		coord = coords[COLORLIST[x]]
+		inMap.addNode(RouterNode(COLORLIST[x], coord))
+		x += 1
+
+""" Builds a Test Level that contains 4 RouterNodes		 """
+""" Please look at this function for an explanation as	 """
+"""  to how LevelBuilding functions are intended to work """
+def Test_Level():
+	numNodes = 4	 # How many nodes are on the map
+	maxPackets = 3	 # Number of Packets that need to be added to the map
+	penalty = 50	 # Penalty for losing a Packet
+	
+	map = Map(maxPackets, penalty)
+
+
+	# Setting up the coordinates for each RouterNode
+	coords = {}
+
+	coords["RED"] = (.3, .3)
+	coords["YELLOW"] = (.5, .3)
+	coords["GREEN"] = (.4, .4)
+	coords["BLUE"] = (.6, .2)
+	
+	# Add the RouterNodes to the Map 
+	addNodes(map, numNodes, coords)
+	
+	# Build the edges between the Nodes
+        # Note: This only allows ONE edge to be in a specific direction from a node (one of the eight cardinal directions to be precise)
+        #       The makeNeighbors function will find which of the eight the directions is closest to the direction between the two nodes given
+        #         and then check if either of the Nodes have an edge in that direction already
+        #       If so, the new edge is ignored and the original is kept
+	map.makeNeighbors(map.findNode("RED"), map.findNode("YELLOW"), 17) # Builds edge between the "RED" and "YELLOW" nodes with a weight of 17
+	map.makeNeighbors(map.findNode("YELLOW"), map.findNode("GREEN"), 5)
+	map.makeNeighbors(map.findNode("BLUE"), map.findNode("YELLOW"), 15)
+	map.makeNeighbors(map.findNode("RED"), map.findNode("GREEN"), 3)
+	
+	return map
+
+""" Builds a larger version of the Test_Level above with the full seven nodes """
+""" May become an actual level in the overall game """
+def Level_1():
+	numNodes = 6
+	maxPackets = 20
+	penalty = 100
+
+	newMap = MapClass.Map(maxPackets, penalty)
+
+	coords = {}
+
+	coords["RED"] = (.5,.5)
+	coords["YELLOW"] = (.5, .3)
+	coords["GREEN"] = (.8, .5)
+	coords["BLUE"] = (.7, .8)
+	coords["PURPLE"] = (.3, .8)
+	coords["PINK"] = (.22, .5)
+
+	addNodes(newMap, numNodes, coords)
+
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('YELLOW'),50)
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('GREEN'),100)
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('BLUE'),50)
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('PURPLE'),90)
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('PINK'),80)
+
+	newMap.makeNeighbors(newMap.findNode('YELLOW'), newMap.findNode('BLUE'),50)
+	newMap.makeNeighbors(newMap.findNode('BLUE'), newMap.findNode('PINK'),20)
+	newMap.makeNeighbors(newMap.findNode('PINK'), newMap.findNode('GREEN'),30)
+	newMap.makeNeighbors(newMap.findNode('GREEN'), newMap.findNode('PURPLE'), 10)
+	newMap.makeNeighbors(newMap.findNode('PURPLE'), newMap.findNode('YELLOW'), 60)
+
+	return newMap
+
+def Level_2():
+	numNodes = 7
+	maxPackets = 20
+	penalty = 100
+
+	newMap = MapClass.Map(maxPackets, penalty)
+
+	coords = {}
+
+	coords["RED"] = (.5, .4)
+	coords["YELLOW"] = (.5, .2)
+	coords["GREEN"] = (.8, .4)
+	coords["BLUE"] = (.7, .8)
+	coords["PURPLE"] = (.3, .8)
+	coords["PINK"] = (.2, .4)
+	coords["ORANGE"] = (.5, .6)
+
+	addNodes(newMap, numNodes, coords)
+
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('YELLOW'),20)
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('GREEN'),50)
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('ORANGE'), 50)
+	newMap.makeNeighbors(newMap.findNode('GREEN'), newMap.findNode('BLUE'), 40)
+	newMap.makeNeighbors(newMap.findNode('BLUE'), newMap.findNode('ORANGE'), 60)
+	newMap.makeNeighbors(newMap.findNode('ORANGE'), newMap.findNode('PURPLE'), 30)
+	newMap.makeNeighbors(newMap.findNode('PURPLE'), newMap.findNode('PINK'), 10)
+	newMap.makeNeighbors(newMap.findNode('PINK'), newMap.findNode('RED'), 20)
+
+	return newMap
+
+def Level_3():
+	numNodes = 5
+	maxPackets = 20
+	penalty = 100
+
+	newMap = MapClass.Map(maxPackets, penalty)
+
+	coords = {}
+
+	coords["RED"] = (.2, .2)
+	coords["YELLOW"] = (.8, .2)
+	coords["GREEN"] = (.8, .8)
+	coords["BLUE"] = (.2, .8)
+	coords["PURPLE"] = (.5, .5)
+
+	addNodes(newMap, numNodes, coords)
+
+	newMap.makeNeighbors(newMap.findNode('PURPLE'), newMap.findNode('RED'), 55)
+	newMap.makeNeighbors(newMap.findNode('PURPLE'), newMap.findNode('YELLOW'), 65)
+	newMap.makeNeighbors(newMap.findNode('PURPLE'), newMap.findNode('GREEN'), 25)
+	newMap.makeNeighbors(newMap.findNode('PURPLE'), newMap.findNode('BLUE'), 35)
+
+	newMap.makeNeighbors(newMap.findNode('RED'), newMap.findNode('YELLOW'), 100)
+	newMap.makeNeighbors(newMap.findNode('YELLOW'), newMap.findNode('GREEN'), 80)
+	newMap.makeNeighbors(newMap.findNode('GREEN'), newMap.findNode('BLUE'), 20)
+	newMap.makeNeighbors(newMap.findNode('BLUE'), newMap.findNode('RED'), 15)
+
+	return newMap
+																										
+def Level_4():
+	numNodes = 7
+	maxPackets = 20
+	penalty = 100
+	
+	map = MapClass.Map(maxPackets, penalty)
+	
+	coords = {}
+	
+	coords["RED"] = (.3, .3)
+	coords["YELLOW"] = (.5, .3)
+	coords["GREEN"] = (.4, .4)
+	coords["BLUE"] = (.6, .2)
+	coords["PURPLE"] = (.4, .2)
+	coords["PINK"] = (.6, .4)
+	coords["ORANGE"] = (.1, .1)
+	
+	addNodes(map, numNodes, coords)
+	
+	map.makeNeighbors(map.findNode("RED"), map.findNode("YELLOW"), 17)
+	map.makeNeighbors(map.findNode("YELLOW"), map.findNode("GREEN"), 5)
+	map.makeNeighbors(map.findNode("BLUE"), map.findNode("YELLOW"), 15)
+	map.makeNeighbors(map.findNode("RED"), map.findNode("GREEN"), 3)
+	
+	map.makeNeighbors(map.findNode("RED"), map.findNode("PURPLE"), 8)
+	map.makeNeighbors(map.findNode("YELLOW"), map.findNode("PURPLE"), 4)
+	map.makeNeighbors(map.findNode("BLUE"), map.findNode("PURPLE"), 18)
+	map.makeNeighbors(map.findNode("GREEN"), map.findNode("PURPLE"), 9)
+	
+	map.makeNeighbors(map.findNode("BLUE"), map.findNode("PINK"), 12)
+	map.makeNeighbors(map.findNode("YELLOW"), map.findNode("PINK"), 19)
+	
+	map.makeNeighbors(map.findNode("RED"), map.findNode("ORANGE"), 1)
+	"""
+
+	map.makeNeighbors(map.findNode("RED"), map.findNode("YELLOW"), 87)
+	map.makeNeighbors(map.findNode("YELLOW"), map.findNode("GREEN"), 45)
+	map.makeNeighbors(map.findNode("BLUE"), map.findNode("YELLOW"), 75)
+	map.makeNeighbors(map.findNode("RED"), map.findNode("GREEN"), 76)
+	
+	map.makeNeighbors(map.findNode("RED"), map.findNode("PURPLE"), 130)
+	map.makeNeighbors(map.findNode("YELLOW"), map.findNode("PURPLE"), 94)
+	map.makeNeighbors(map.findNode("BLUE"), map.findNode("PURPLE"), 37)
+	map.makeNeighbors(map.findNode("GREEN"), map.findNode("PURPLE"), 98)
+	
+	map.makeNeighbors(map.findNode("BLUE"), map.findNode("PINK"), 69)
+	map.makeNeighbors(map.findNode("YELLOW"), map.findNode("PINK"), 35)
+	
+	map.makeNeighbors(map.findNode("RED"), map.findNode("ORANGE"), 17)"""
+
+
+
+	return map
+	

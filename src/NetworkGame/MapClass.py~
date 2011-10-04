@@ -1,0 +1,437 @@
+from threading import Timer
+from random import *
+import math
+
+from Globals import COLORLIST
+from GMapBuilder import *
+
+""" This is the Map class                                                                                    """
+""" The code-level representation of a level                                                                 """
+""" Contains all the nodes on the 'Map'/'Level' in a List                                                    """
+""" Contains all the edges and their weights                                                                 """
+""" Keeps track of a game's score and the # of Packets that have been added and routed successfully          """
+""" Holds the maximum  number of Packets the Map can add                                                     """
+""" Contains methods to build edges between nodes                                                            """
+""" Contains methods to add nodes to the Map                                                                 """
+""" Contains methods to handle player's trying to send nodes and then telling the receiving node to receive. """
+""" Contains methods to add Packets to the map until the maximum # of Packets are added                      """
+
+""" Notes:                                                                  """
+""" In comments, 'node' refers to an object of the Router Node class        """
+""" In comments, 'Packet' refers to a color string ("YELLOW", "GREEN", etc) """
+"""   not an actual instantiation of a Packet class                         """
+class Map:
+    """ DEFAULT: Builds an empty Map """
+    """ inPackets: The maximum number of Packets the Map can add during gameplay """
+    """ inPenalty: The penalty for losing a Packet by sending it to a RouterNode with 3 Packets """
+    def __init__(self, inPackets, inPenalty):
+        self.nodeList = ([])
+        self.edgeList = ([])
+
+        self.score = 0
+        self.penalty = inPenalty
+        
+        self.numPlayers = 0
+
+        self.maxPackets = inPackets
+        self.packetsAdded = 0
+        self.packetsOut = 0
+        self.successfulPackets = 0
+
+        """ Build the GameScreen that the Map needs to communicate with to have stuff appear on the GUI """
+        self.mapScreen = GGameScreen()
+        
+        self.playing = 1
+    
+    """ Adds a node to the nodeList """
+    def addNode(self, newNode):
+        self.nodeList.append(newNode)
+
+        """ Add a GUI Node to the map screen """
+        self.mapScreen.addNode(newNode.color, newNode.coord, newNode)
+    
+    """ Return a specific node by index """
+    def getNode(self, index):
+        return self.nodeList[index]
+    
+    """ Return a specific node by color """
+    def findNode(self, inColor):
+        for x in self.nodeList :
+            if x.color == inColor :
+                return x
+
+    """ Adds edge between two nodes (aka makes the nodes neighbors) """
+    """ node1: the first node                                       """
+    """ node2: the second node                                      """
+    """ weight: the weight of the edge                              """
+    """ Returns whether it was able to create the edge              """
+    def makeNeighbors(self, node1, node2, weight):
+        # Find the direction between node1 and node 2 
+        x, y = self.findDirection(node1, node2)
+
+        # If the function found a conflict in edges (ie. a node already had an edge in that direction), return
+        if x is None or y is None:
+            return False
+        
+        tempDict = {}
+        # Add node1 as key, direction coords as value 
+        tempDict[node1] = (x, y)
+        # Add node2 as key, 
+        #   direction coords in opp direction as value 
+        tempDict[node2] = (-x, -y)
+        # Add 'weight' as key, weight number as the value
+        tempDict['weight'] = weight
+        # Add the edge to the Map's edge List """
+        self.edgeList.append(tempDict)
+
+        """ Add an Edge to the map screen """
+        self.mapScreen.addEdge(node1.coord, node2.coord, weight)
+
+        return True
+    
+    
+    """ Checks if a node has a neighboring node in a specific direction """
+    """ node: The node we're trying to find the neighbor of             """
+    """ x, y: The direction the neighbor should be in                   """
+    """ Returns the neighboring node and the weight of the edge         """
+    """  if there is a neighbor and the edge is not inUse               """
+    """                                         aka sending a 'Packet'  """
+    def checkNeighbors(self, node, x, y):
+        # may check if node is in node list
+        #  to make sure a player who doesn't have a node on the 
+        #  map can't mess with stuff
+        
+        # Check all edges 
+        for k in self.edgeList :
+            # Check both nodes in the edge
+            for l in k.keys() :
+                # if the node is used in the edge
+                if l == node :
+                
+                    # if the direction of the edge is the same as the 
+                    #   flick direction                               
+                    if k[node] == (x, y) :
+                        weight = k['weight']
+                        
+                        # Find the destination node """
+                        for i, j in k.iteritems() :
+                        
+                            # if the key is not the sending node or the 
+                            # 'weight', then it's the destination node  
+                            if i is not 'weight' and i is not node :
+                                return (i, weight, k)
+                    
+        return (None, None, None)
+    
+    """ Finds the direction from node1 to node2      """
+    """ Chooses one of the eight cardinal directions """
+    """  by using angles to approximate which of the """
+    """  45 degree sectors it's in                   """
+    def findDirection(self, node1, node2):
+        x1, y1 = node1.coord
+        x2, y2 = node2.coord
+        
+        x = x2 - x1
+        y = y2 - y1
+        y = -y # Flip Magnitude on y, so +y is up, rather than being the standard for screens where y is distance from top
+
+        # if x is 0, then the angle is +/- pi/2
+        if x == 0:
+            if y > 0:
+                angle = math.pi/2.0
+            elif y < 0:
+                angle = -math.pi/2.0
+        # Otherwise, its just the arctangent
+        else:
+            angle = math.atan(y/x)
+
+        # Check if the angle is closer to a diagonal...
+        if (abs(angle) >= math.pi/8.0 and abs(angle) <= math.pi*3/8.0) or (abs(angle) >= math.pi*5/8.0 and abs(angle) <= math.pi*7/8.0):
+            x = x/abs(x)
+            y = y/abs(y)
+        # ...the x-axis...
+        if abs(angle) < math.pi/8.0 or abs(angle) > math.pi*7/8:
+            x = x/abs(x)
+            y = 0
+        # ...or the y-axis
+        elif abs(angle) > math.pi*3/8.0 and abs(angle) < math.pi*5/8.0:
+            x = 0
+            y = y/abs(y) 
+
+        # If the node already has an edge in that direction, return None
+        if self.checkEdgeConflicts(node1, (x, y)):
+            return None, None
+        elif self.checkEdgeConflicts(node2, (-x, -y)):
+            return None, None
+
+        return x, y
+
+
+    """ Function that returns a bool based on whether a """
+    """ node has an edge in a particular direction      """
+    def checkEdgeConflicts(self, node, direction):
+        edges = self.findEdges(node)
+        for edge in edges:
+            if node in edge:
+                if edge[node] == direction:
+                    return True
+                
+        return False
+    
+    """ Finds and returns all the edges next to a node """
+    def findEdges(self, node):
+        tempEdges = ([])
+        for k in self.edgeList :
+            # Check both nodes in the edge
+            for l in k.keys() :
+                # if the node is used in the edge
+                if l == node :
+                    tempEdges.append(k)
+        return tempEdges
+    
+    """ Finds the shortest path for a packet to take """
+    """ start: The RouterNode the shortest path is starting from """
+    """ endColor: The color of the node we want to find the shortest path to """
+    """ Returns the edge from the current node to get it there """
+    def findShortestPath(self, start, endColor):
+        finalNode = self.findNode(endColor)
+        
+        # Find the shortest path to all nodes
+        dijkstraList = self.dijkstrasAlg(start)
+        
+        # Find the node you want to send to
+        prev = finalNode
+        found = 0
+        while True :
+            dist, itsPred, visited = dijkstraList[prev]
+            if itsPred is not start :
+                prev = itsPred
+            else:
+                break
+        
+        # Find the edge to get it there
+        for k in self.edgeList :
+            for l in k.keys() :
+                if l is start or l is prev or l is 'weight' :
+                    found += 1
+                else:
+                    break
+            if found is not 3 :
+                found = 0
+            else :
+                return k
+    
+    """ Finds shortest path from start to all other nodes """
+    """ Using Dijkstra's Algorithm                        """
+    def dijkstrasAlg(self, start):
+        # Initialize dijkstra variables
+        dijkstraList = {}
+        visitedAll = False
+        nodeOn = start
+        
+        for x in self.nodeList :
+            if x == start :
+                dijkstraList[x] = (0, None, 0)
+            else:
+                dijkstraList[x] = (1000, None, 0)
+                
+        while(not visitedAll) :
+            edges = self.findEdges(nodeOn)
+            
+            # Check all edges attached to the nodeOn
+            for k in edges :
+                # Find the adjacent node
+                for l in k.keys() :
+                    if l is not 'weight' and l is not nodeOn :
+                        nextNode = l
+                        # Check if the node has already been visited
+                        oldDist, pred, visited = dijkstraList[nextNode]
+                        if not visited :
+                            weight = k['weight']
+                            dist, pred, visited = dijkstraList[nodeOn]
+                            
+                            # Check if the old distance is greater than the current distance
+                            if oldDist > dist + weight :
+                                dijkstraList[nextNode] = (dist + weight, nodeOn, 0)
+                                
+            # Find the next node to use/check if the algorithm is done             
+            dist, pred, visited = dijkstraList[nodeOn]
+            dijkstraList[nodeOn] = (dist, pred, 1)
+            distMin = 1000
+            visitedAll = True
+            for x in dijkstraList.keys() :
+                dist, pred, visited = dijkstraList[x]
+                if not visited :
+                    if dist < distMin :
+                        nodeOn = x
+                        ditMin = dist
+                    visitedAll = False
+                    
+        return dijkstraList
+        
+    
+    """ Map tries to send a Packet from one node in a specific direction """
+    """  by finding if the node has an edge in the specified direction   """
+    """ sender: RouterNode trying to send                                """
+    """ x, y: Direction coords the 'Packet' is being sent                """
+    def trySend(self, sender, x, y):
+        # Check if there is an edge in the specified direction
+        dest, weight, edge = self.checkNeighbors(sender, x, y)
+
+        # If there is an edge in the specified direction
+        if dest :
+             # Check if the sender has a Packet to send
+             packet = sender.sendPacket()
+             if packet :
+                 # If they do, start the timer to receive the Packet
+                 edge['weight'] = weight
+                 self.mapScreen.sendPacket(sender.color, packet, dest.color, weight)
+
+                 # Set the Timer to tick a hundred times so that the GUI Packet can move
+                 # Originally this just implemented as a straight timer with the whole time interval done in one Timer
+                 # But, due to the innaccuracy of python's standard Timer, the multiple Timers in the GUI result in a several second delay over the Game Logic Timer
+                 # Because of this and a lack of time to adequately address the problem, the Game Logic now has 100 separate timers to try and match the same
+                 #  inefficiency as the GUI. This is not a perfect fix and still results in discrepancies of packets visually not reaching their destinations 
+                 #  before the Packet appears in the Node. If any future work is to be done on this project, I would like to point this out as a potential problem
+                 #  that should be addressed if at all possible
+                 # Following is the original line of code that was removed
+                 # t = Timer(weight/10.0, self.tryReceive, [dest, weight, packet])
+                 t = Timer((weight/10.0)/100.0, self.setIntervalTimer, [(weight/10.0)/100.0, 0, self.tryReceive, [dest, weight, packet] ])
+                 t.start()
+                 self.packetsOut += 1
+                 
+    def setIntervalTimer(self, tickTime, ticks, realCallback, realCallbackParams):
+        ticks += 1
+        if ticks == 99:
+            timer = Timer(tickTime, realCallback, realCallbackParams)
+        else:
+            timer = Timer(tickTime, self.setIntervalTimer, [tickTime, ticks, realCallback, realCallbackParams])
+        timer.start()
+
+    """ Function that tells a node to recdeive a Packet """
+    """ After the time has elapsed on the edge          """
+    """ Sends a 'Packet' and increments score                  """
+    """ Then checks if the 'Packet' is the same color as the node """        
+    """   the game discards the Packet since it has reached       """
+    """   its destination                                         """
+    """ Otherwise, the 'Packet' is added to the node's queue,     """
+    """   if there is room                                        """
+    def tryReceive(self, dest, weight, inPacket):
+        # If no longer playing, return
+        if not self.playing :
+            return
+
+        # Increment the score
+        self.score += weight
+
+        if weight > 0:
+            self.packetsOut -= 1
+
+        # Check if the packet has reached its destination
+        if not inPacket == dest.color  :
+            # If not, check if there's room in the queue
+            if len(dest.packetQueue) < 3 :
+                dest.receivePacket(inPacket)
+                self.isComp(dest)
+
+            # Otherwise, a packet has been lost
+            else:
+                self.score += self.penalty
+                """ Tell the Game to tell the users they lost a packet """
+                #some kind of function that displays the you lost a packet penalty
+        else:
+            self.successfulPackets += 1
+            self.checkGameOver()
+    
+    """ Checks if the Map needs to add more Packets """
+    """ If so, it sets the timer to add the packets """
+    def needMorePackets(self):
+        if self.packetsAdded < self.maxPackets :
+            self.setPacketTimer()
+
+    """ Sets the Timer that randomly delivers packets """
+    """ Adds packets at random intervals from 0-8     """
+    """ If gameplay seems slow try making this Timer run faster """
+    def setPacketTimer(self):
+	timer = Timer(random()*3, self.addPacket)
+	timer.start()
+
+    """ Randomly pick a node and add a Packet to it """
+    def addPacket(self):
+        # If no longer playing, return
+	if not self.playing :
+	    return
+
+	while True :
+            # Pick a random node
+	    nodeIndex = random()*len(self.nodeList)
+	    node = self.nodeList[int(nodeIndex)]
+            
+            # Check if the node has room in their queue
+	    if len(node.packetQueue) < 3 :
+                # If so, add a random Packet
+		self.tryReceive(node, 0, self.randomPacket(node.color))
+                self.packetsAdded += 1
+                self.needMorePackets()
+		return
+
+    """ Returns a random Packet """
+    def randomPacket(self, inColor):
+        global COLORLIST
+
+	while True :
+            # Find a random color for the Packet
+	    colorIndex = random()*len(self.nodeList)
+	    color = COLORLIST[int(colorIndex)]
+            
+            # Check if the color of the Packet is the same as the color of the node
+	    if color is not inColor :
+                # if not, return the Packet
+		self.packetsAdded +=1
+		self.needMorePackets()
+		return color
+        
+    """ Checks if the Game is Over aka no more Packets on the map """        
+    def checkGameOver(self):
+        # If all the max # of Packets has not been added yet, the game isn't over
+        if self.packetsAdded is not self.maxPackets :
+            return
+        # If there are still packets being sent, the game isn't over yet
+        elif self.packetsOut > 0:
+            return
+        # Otherwise, check if there are packets in the Queues
+        else:
+            for node in self.nodeList:
+                # If the node has a packet, the game isn't over
+                if len(node.packetQueue) > 0 :
+                    return
+        # If no more Packets to add and no Packets on the field, the game is over
+        self.playing = 0
+            
+    """ Is  a node a computer?                      """
+    """ If so, set a timer and then tell it to send """
+    def isComp(self, node):
+        i = self.nodeList.index(node)
+
+        if i + 1 > self.numPlayers :
+            self.setCompTimer(node)
+    
+    """ Sets the Timer for a computer to send a packet """
+    def setCompTimer(self, node):
+        sendTimer = Timer(random()*2, self.compSend, [node])
+        sendTimer.start()
+    
+    """ Finds an open edge for a computer to pass along """
+    def compSend(self, node):
+        # If no longer playing, return
+        if not self.playing :
+            return
+        
+        color = node.packetQueue[0]
+
+        # Find the shortest path to the destination node
+        edge = self.findShortestPath(node, color)
+        
+        # Send along that path
+        x, y = edge[node]
+        self.trySend(node, x, y)

@@ -1,0 +1,354 @@
+"""This is the WII GUI Toolkit, a python module put together to aid in
+drawing the GUIs for both the Network Game and the Binary Tree Game
+(originally).  Other code authors are free to modify this as needed -
+feel free to add classes and functions to it if it would be useful
+to do so in development of future game GUIs."""
+
+import sys, os, pygame
+from pygame.locals import *
+
+colors = {'ckey' : (0, 0, 0), 'blue' : (0, 0, 255), 'red' : (255, 0, 0),
+          'green' : (255, 0, 0), 'yellow' : (255, 255, 0),
+          'orange' : (255, 100, 20), 'pink' : (255, 100, 200),
+          'purple' : (145, 0, 200), 'black' : (1, 1, 1),
+          'treenodebg' : (9, 34, 106), 'treenodetext' : (255,220,145),
+          'edgetree' : (143,100,7), 'white' : (255, 255, 255)}
+
+def Gload_image(name):
+    """A function that merges the full path of the image name given, and
+    loads the image.  This one's safe to use on images with per-pixel
+    alpha values, since it uses image.convert_alpha() to convert the
+    image pixels into the type of pixels the display has."""
+    
+    fullname = os.path.join('data', name)
+    try:
+        image = pygame.image.load(fullname)
+    except:
+        #print 'File not found:', fullname, '.'
+        #print 'Using a blank surface instead...'
+        image = pygame.Surface((800, 800))
+        image.fill(colors['ckey'])
+        image.set_colorkey(colors['ckey'])
+    image = image.convert_alpha()
+    """Preserving per-pixel-alphas for semi-transparent to transparent
+    overlay images..."""
+    return image
+
+
+
+def Gdraw_bkg(type, color, radius):
+    """This function draws either the colored node or colored packet
+    background.  It takes a type, a color and a radius for pygame's
+    draw circle or draw rect functions.  It draws the shape to a
+    temporary variable and then it returns that variable.
+    The default position is the center of the new surface, which is
+    also the radius.
+
+    The new background surface is twice the radius by twice the radius,
+    to fit the whole shape comfortably... so if you want an image
+    that's 50x50px, you should make a radius of 25.
+
+    If you want to draw a packet, 'radius' becomes half the width of the
+    packet square.
+
+    NOTE:  The program's color key for transparency is black.
+    DO NOT USE (0, 0, 0) FOR YOUR COLOR, UNLESS YOU DON'T WANT A
+    VISIBLE BACKGROUND CIRCLE.  You can use any value other than that,
+    though."""
+    
+    bg = pygame.Surface((radius*2, radius*2))
+    bg.set_colorkey(colors['ckey'])
+    if type == 'node':
+        pygame.draw.circle(bg, colors[color], ((radius, radius)), radius)
+    elif type == 'packet':
+        pygame.draw.rect(bg, colors[color], (0,0,radius,radius))
+    return bg
+
+def Gaspect_scale(img,(bx,by)):
+    """ Scales 'img' to fit into box bx/by.
+     This method will retain the original image's aspect ratio.
+
+     Modified from Frank Raiser's original aspect_scale.py code,
+     available here: http://www.pygame.org/pcr/transform_scale/index.php
+     """
+    ix,iy = img.get_size()
+    if ix > iy:
+        # fit to width, then to 90% of width so width < bg.get_width()
+        scale_factor = bx/float(ix)
+        sy = scale_factor * iy
+        if sy > by:
+            scale_factor = by/float(iy)
+            sx = scale_factor * ix
+            sx = sx
+            sy = by
+        else:
+            sx = bx
+    else:
+        # fit to height, then to 90% of height so height < bg.get_height()
+        scale_factor = by/float(iy)
+        sx = scale_factor * ix
+        if sx > bx:
+            scale_factor = bx/float(ix)
+            sx = bx
+            sy = scale_factor * iy
+        else:
+            sy = by
+
+    return pygame.transform.scale(img, (int(sx),int(sy)))
+
+def Gequalize_images(fg, bg, ctr):
+    """ This function makes sure that all of the images have the same
+    size.  If not, the images will be re-sized to the size of the
+    background image."""
+    if not fg.get_size() == bg.get_size():
+        #print 'Foreground size is not equal to background size, resizing'
+        fg = pygame.transform.scale(fg, (bg.get_size()))
+    if not ctr.get_size() == bg.get_size():
+        #print 'Center size is not equal to background size, resizing'
+        ctr = Gaspect_scale(ctr, bg.get_size())
+        nw = int(ctr.get_width()*.75)
+        nh = int(ctr.get_height()*.75)
+        ctr = pygame.transform.scale(ctr, (nw, nh))
+    return fg, ctr
+
+
+class GNode(pygame.sprite.Sprite):
+    """A second try at the MyNodes class.  This class makes a composite
+    image out of 3 different images by painting them on the screen in a
+    specific order.  The center image can either be a packet image (for
+    the network game) or text (for the binary tree game).  The final
+    result is a sprite object that can be easier manipulated by the
+    GUI of either the Routing Game or the Binary Tree Game."""
+    
+
+    
+    def __init__(self, type='node', text=None, ctrimg=None, bgradius=25,
+                 bgcolor='blue', textcolor='white', pos=(0, 0)):
+        pygame.sprite.Sprite.__init__(self)
+        """To initialize, you must pass the init function a type (in this
+        case, 'node', to draw a node), either text, a center image, or
+        neither (the default is None in both cases), a radius for the
+        background image (two times which will be the size of the node),
+        and a node color (default is 'blue').  If you have text, you may
+        pass a text color, if the default 'white' won't look good."""
+        
+
+        self.cornerpos = pos
+        self.color = bgcolor
+        self.bg = Gdraw_bkg(type, bgcolor, bgradius)
+        """ self.bg is the background image of the composite.  For the
+        network game, it is a circle of a specific color.  If no color
+        is given, it will default to blue."""
+
+        self.fg = Gload_image('node_overlay.png')
+        
+        """self.fg is the overlay image of the composite."""
+
+        """I feel like I should explain this if-elif-else loop.
+        If 'text' is None and ctrimg is None, this will create a blank
+        center image to make an empty-looking node.
+
+        If 'text' is None and ctrimg is not None, this will load the
+        image of filename specified by 'ctrimg' and use that as the
+        middle layer of the composite image.
+
+        If 'text' is not None and ctrimg is None, this will render
+        a text-holding Surface to use as the center image.
+
+        Otherwise, (for now, at least) the program will exit due to
+        too many inputs from the user.  Later on, if it's desired,
+        both text and center-image inputs are possible, but for now
+        you will only want an image with one game, or text with the
+        other... never both at the same time."""
+        
+        if text is None: 
+            if ctrimg is None:
+                self.has_packet = False
+                #print 'Debug: Blank Node Drawn'
+                """self.has_packet is true if the package image should exist.
+                Since it's false, no packet image should be drawn here."""
+                
+                self.ctr = pygame.Surface((bgradius*2, bgradius*2))
+                self.ctr.fill(colors['ckey'])
+                self.ctr.set_colorkey(colors['ckey'])
+                """self.ctr is a blank, transparent surface."""
+                
+            else:
+                self.has_packet = True
+                #print 'Debug: Packet Node Drawn'
+                #print 'Packet is', os.path.join('data', ctrimg)
+                """has packet is true, so the packet image should be drawn."""
+                
+                self.ctr = Gload_image(ctrimg)
+                """self.ctr is the image specified by ctrimg."""
+                
+        elif text is not None:
+            if ctrimg is None:
+                #print 'Debug: Text Node Drawn'
+                #print 'Text is', text
+                self.has_packet = False
+                """ has_packet is false, so no packet image here."""
+            
+                font = pygame.font.Font(None, 72)
+                """Font for text. Sized so large so that it won't have to
+                be up-sized... scaling images down, even without sampling,
+                looks better than scaling them up."""
+                
+                self.ctr = font.render(str(text), 1, colors[textcolor])
+                """Render the text held in 'text' to a Surface."""
+
+            else:
+                #print 'Error: too many inputs.'
+                SystemExit
+
+        self.fg, self.ctr = Gequalize_images(self.fg, self.bg, self.ctr)
+        """Gotta make sure that we don't have an overlay or a center
+        image that's bigger than our node is..."""
+        self.bgpos = self.bg.get_rect(centerx=bgradius, centery=bgradius)
+        self.ctrpos = self.ctr.get_rect(centerx=bgradius,centery=bgradius)
+        self.fgpos = self.fg.get_rect(centerx=bgradius, centery=bgradius)
+        self.temp = pygame.Surface((bgradius*2, bgradius*2))
+        self.update()
+        """Positioning all the images to be in the center of the surface."""
+
+    def update(self):
+        """This method:
+            * Blanks out the temporary surface.
+            * Blits the images to the temporary surface in their proper
+              order.
+            * Re-sets the sprite's self.image to the data contained in
+              the temporary surface.
+
+        This way, we end up with a 3D container-looking object
+        out of three composite images.
+
+        NOTE: update's functionality may change once movement is
+        incorporated into this class.  Watch for it!"""
+        
+        self.temp.fill(colors['ckey'])
+        self.temp.set_colorkey(colors['ckey'])
+        self.temp.blit(self.bg, self.bgpos)
+        self.temp.blit(self.ctr, self.ctrpos)
+        self.temp.blit(self.fg, self.fgpos)
+        self.image = self.temp
+
+    def sndrcvpacket(self, packet):
+        """***SOON TO BE CHANGED DUE TO A CHANGE OF UNDERSTANDING WITH
+        HOW NETWORK GAME NODES WORK.***"""
+
+        pass
+    
+
+class GPacket(pygame.sprite.Sprite):
+    """A sprite class that will be used to represent network game packets
+    on screen."""
+    def __init__(self, type='packet', color='red', radius=25, text=None, textcolor='white'):
+        """This initialization function takes a color and packet size
+        and draws the packet."""
+        
+        pygame.sprite.Sprite.__init__(self)
+        self.bg = Gdraw_bkg(type, color, radius)
+        self.fg = Gload_image('packet_overlay.png')
+        if text is None: 
+            #print 'Debug: Blank Packet Drawn'
+            """self.has_packet is true if the package image should exist.
+            Since it's false, no packet image should be drawn here."""
+                
+            self.ctr = pygame.Surface((radius*2, radius*2))
+            self.ctr.fill(colors['ckey'])
+            self.ctr.set_colorkey(colors['ckey'])
+            """self.ctr is a blank, transparent surface."""
+                
+        elif text is not None:
+            #print 'Debug: Text Node Drawn'
+            #print 'Text is', text
+            """ has_packet is false, so no packet image here."""
+            
+            font = pygame.font.Font(None, 72)
+            """Font for text. Sized so large so that it won't have to
+            be up-sized... scaling images down, even without sampling,
+            looks better than scaling them up."""
+                
+            self.ctr = font.render(str(text), 1, colors[textcolor])
+            """Render the text held in 'text' to a Surface."""
+
+        self.fg, self.ctr = Gequalize_images(self.fg, self.bg, self.ctr)
+        self.temp = pygame.Surface((radius*2, radius*2))
+        self.update()
+
+    def update(self):
+        """This method:
+            * Blanks out the temporary surface.
+            * Blits the images to the temporary surface in their proper
+              order.
+            * Re-sets the sprite's self.image to the data contained in
+              the temporary surface.
+
+        This way, we end up with a 3D-looking packet image composite from
+        two separate images.
+        
+        NOTE: update's functionality may change once movement is
+        incorporated into this class.  Watch for it!"""
+        
+        self.temp.fill(colors['ckey'])
+        self.temp.set_colorkey(colors['ckey'])
+        self.temp.blit(self.bg, self.bgpos)
+        self.temp.blit(self.ctr, self.ctrpos)
+        self.temp.blit(self.fg, self.fgpos)        
+
+class GEdges():
+    def __init__(self, startpos, endpos, thickness, weight):
+        """This initializes the GUI Edges class."""
+        x, y = startpos
+        x2, y2 = endpos
+        if x2-x <0 and y2-y <0:
+            x, y = x-5, y-5
+            x2, y2 = x2-5, y2-5
+        elif x2-x<0 and y2-y >0:
+            x,y = x+ 5, y+5
+            x2, y2 = x2+5, y2+5
+        elif x2-x>0 and y2-y>0:
+            x,y= x-25, y+5
+            x2,y2= x2-25, y2+5
+        elif x2-x >0 and y2-y<0:
+            x,y= x+20, y-5
+            x2,y2= x2+20, y2-5
+        elif x2-x==0:
+            x,x2 = x+10, x2+10
+        elif y2-y==0:
+            y, y2 = y+10, y2+10
+            
+        self.image = self.drawEdges(startpos, endpos, thickness)
+        self.image2 = self.displayWeight(weight)
+        self.image.blit(self.image2, ((x+x2)/2,(y+y2)/2))
+        
+    def drawEdge(self, startpos, endpos, thickness):
+        """This function draws the edge onto the screen.  You must give it a
+        starting position, ending position, and line thickness.  Make
+        diagonals about 2-3 px wider than horizontals or verticals; this will
+        make them all look about the same width."""
+
+        # Getting the size needed for the temporary surface.
+        if startpos[0] > endpos[0]:
+            surfX = startpos[0] - endpos[0]
+        else:
+            surfX = endpos[0] - startpos[0]
+
+        if startpos[1] > endpos[1]:
+            surfY = startpos[1] - endpos[1]
+        else:
+            surfY = endpos[1] - startpos[1]
+
+        self.temp = pygame.Surface((surfX, surfY))
+        self.temp.fill(colors['ckey'])
+        self.temp.set_colorkey(colors['ckey'])
+                               
+        pygame.draw.line(self.temp, GUINodes.black, startpos, endpos, width = thickness)
+        return self.temp
+    
+    def displayWeight(self, weight):
+        font = pygame.font.Font(None, 36)
+        text = font.render(str(weight), 1, (10, 10, 10))
+        return text
+        
+  

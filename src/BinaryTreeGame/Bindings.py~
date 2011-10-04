@@ -1,0 +1,22 @@
+from GameEventParser.GameEventCore import *
+
+class NoneBindings(GameEventCore):
+	pass
+
+""" The Main Set of Bindings """
+""" Note: Need to discuss with people whether this is all gonna stay in one or if it will get moved elsewhere """
+class PlayerSelectionBindings(GameEventCore):
+	
+	bind_addPlayerA   = ['Button1Press']
+	bind_addPlayerB   = ['Button2Press']
+	bind_tryShove	  = ['Flick']
+	bind_trySelect	  = ['ButtonAPress']
+	bind_tryDeselect  = ['ButtonARelease']
+	bind_tryRotate    = ['ButtonBPress', 'Roll', 'ButtonBRelease']
+
+class TwoTeamVersusBindings(GameEventCore) :
+
+	bind_tryShove	  = ['Flick']
+	bind_tryRotate	  = ['Roll']
+	bind_trySelect	  = ['ButtonAPress']
+	bind_tryDeselect  = ['ButtonARelease']

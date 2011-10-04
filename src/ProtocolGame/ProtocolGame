@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+
+"""The Protocol Game --- highlight the differences between centralized
+and decentralized protocols.
+"""
+import sys
+
+from ProtocolGame import *
+
+main( sys.argv[1], sys.argv[2:] )
+

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+teamrepos=( \
+	http://inside.mines.edu/~sdaugher/wii2010-repo \
+	http://inside.mines.edu/~cloew/wii2010-repo \
+	http://inside.mines.edu/~kshepard/wii2010-repo \
+	http://inside.mines.edu/~goswald/wii2010-repo \
+	http://inside.mines.edu/~jcirone/wii2010-repo \
+	http://www.mcprogramming.com/static/wii2010-repo \
+	)
+
+# immediate exit on failure
+set -e
+
+# the default operation is the name of this script
+op=$(basename "${0}")
+
+# op!
+for u in ${teamrepos[@]} ; do
+	bzr "${op}" ${u}
+done
+
+

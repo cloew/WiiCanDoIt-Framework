@@ -1,0 +1,5 @@
+from GameEventParser.GameEventCore import *
+
+class Bindings(GameEventCore) :
+
+    bind_filterInput     = ['Flick']

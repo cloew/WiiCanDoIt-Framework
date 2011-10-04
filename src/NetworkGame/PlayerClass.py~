@@ -1,0 +1,6 @@
+
+""" Class that represents a 
+class Player:
+    def __init__(self, inID, inColor):
+        self.wiiID = inID
+        self.color = inColor

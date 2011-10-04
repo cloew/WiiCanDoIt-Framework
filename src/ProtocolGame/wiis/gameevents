@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+import sys
+
+from readdict import strtodict
+
+
+def main(inputfile) :
+	while True :
+		l = inputfile.readline()
+		if not len(l) :
+			break # end of file
+		l = l[:-1]  # remove newline
+		try :
+			t = 50
+			x = strtodict(l)
+			a = x.get('action',None) 
+			if x.get('protocol',None) == 'Found' :
+				op = 'found'
+			elif a is None :
+				continue
+			elif a in ('ButtonUpRelease','ButtonDownRelease') :
+				op = 'random'
+			elif a in ('ButtonLeftRelease',) :
+				op = 'previous'
+			elif a in ('ButtonRightRelease',) :
+				op = 'next'
+			else :
+				op = ''
+				try :
+					mo = float(x.get('modifier',0))
+					if mo > t and a=='FlickX' :
+						op = 'ripple'
+				except :
+					pass
+
+			if op :
+				sys.stdout.write( "%s %s\n" % (x['wiimoteID'], op) )
+				sys.stdout.flush()
+			else :
+				sys.stderr.write( "gameevents: ignored %s\n" % x )
+					
+		except Exception, e:
+			sys.stderr.write( "gameevents: %s\n" % e )
+			
+
+if __name__ == '__main__' :
+	if len(sys.argv) > 1 : 
+		main(file(sys.argv[1]))
+	else :
+		main(sys.stdin)
+	
